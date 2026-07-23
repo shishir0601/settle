@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Split group expenses and settle up in minimal transfers" />
+  <title>Settle – Smart Expense Splitting</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  
+  <!-- Chart.js for data visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="root" class="app">
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="navbar-container">
+        <div class="navbar-brand">
+          <h1 class="logo">Settle</h1>
+          <p class="tagline">Smart expense splitting</p>
+        </div>
+        <div class="navbar-menu">
+          <button class="btn btn-ghost" id="theme-toggle" aria-label="Toggle dark mode">🌙</button>
+          <button class="btn btn-ghost" id="help-btn" aria-label="Help">?</button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Empty State -->
+      <div id="empty-state" class="empty-state-container">
+        <div class="empty-state">
+          <div class="empty-icon">🎯</div>
+          <h2>Welcome to Settle</h2>
+          <p>Create a group and start tracking expenses</p>
+        </div>
+      </div>
+
+      <!-- Group Setup (Hidden after group created) -->
+      <section id="setup-section" class="setup-section" hidden>
+        <div class="card">
+          <div class="card-header">
+            <h2>Create a Group</h2>
+            <p class="text-secondary">Set up a group and invite members</p>
+          </div>
+          <div class="card-body">
+            <form id="setup-form" class="form">
+              <div class="form-group">
+                <label for="group-name">Group Name</label>
+                <input 
+                  id="group-name" 
+                  type="text" 
+                  class="input" 
+                  placeholder="e.g., Road Trip, Apartment Rent" 
+                  required 
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="members-input">Members</label>
+                <textarea 
+                  id="members-input" 
+                  class="textarea" 
+                  placeholder="Enter names separated by commas&#10;e.g., Alice, Bob, Carol, Diana" 
+                  required
+                ></textarea>
+                <small class="text-secondary">Separate names with commas. At least 2 members required.</small>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-lg">
+                Create Group
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- Dashboard (Shown after group created) -->
+      <section id="dashboard-section" class="dashboard-section" hidden>
+        <!-- Header -->
+        <div class="dashboard-header">
+          <div>
+            <h2 id="group-title" class="text-3xl font-bold">Group Name</h2>
+            <p id="group-subtitle" class="text-secondary">Members: <span id="member-count">0</span></p>
+          </div>
+          <div class="header-actions">
+            <button id="group-settings-btn" class="btn btn-secondary" aria-label="Group settings">⚙️ Settings</button>
+            <button id="export-btn" class="btn btn-secondary" aria-label="Export data">📥 Export</button>
+          </div>
+        </div>
+
+        <!-- Grid Layout -->
+        <div class="dashboard-grid">
+          <!-- Left Column: Add Expense -->
+          <aside class="sidebar">
+            <div class="card">
+              <div class="card-header">
+                <h3>Add Expense</h3>
+              </div>
+              <div class="card-body">
+                <form id="expense-form" class="form">
+                  <div class="form-group">
+                    <label for="expense-description">Description</label>
+                    <input 
+                      id="expense-description" 
+                      type="text" 
+                      class="input" 
+                      placeholder="Coffee, lunch, gas..." 
+                      required 
+                    />
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="expense-amount">Amount (₹)</label>
+                      <input 
+                        id="expense-amount" 
+                        type="number" 
+                        class="input" 
+                        placeholder="0.00" 
+                        min="0" 
+                        step="0.01" 
+                        required 
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label for="expense-category">Category</label>
+                      <select id="expense-category" class="input">
+                        <option value="food">🍔 Food</option>
+                        <option value="transport">🚗 Transport</option>
+                        <option value="accommodation">🏠 Accommodation</option>
+                        <option value="entertainment">🎬 Entertainment</option>
+                        <option value="shopping">🛍️ Shopping</option>
+                        <option value="utilities">💡 Utilities</option>
+                        <option value="other" selected>📌 Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="expense-paidby">Paid By</label>
+                    <select id="expense-paidby" class="input" required></select>
+                  </div>
+
+                  <div class="form-group">
+                    <label>Split Among</label>
+                    <div class="split-toolbar">
+                      <button type="button" class="btn btn-sm btn-secondary" id="split-all">Select All</button>
+                      <button type="button" class="btn btn-sm btn-secondary" id="split-none">Clear</button>
+                      <button type="button" class="btn btn-sm btn-secondary" id="split-equal">Equal Split</button>
+                    </div>
+                    <div id="members-checkboxes" class="members-grid"></div>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary btn-lg">Add Expense</button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Members Card -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Members</h3>
+              </div>
+              <div class="card-body">
+                <div id="members-list" class="members-list"></div>
+                <div class="form-group mt-4">
+                  <input 
+                    id="new-member-input" 
+                    type="text" 
+                    class="input" 
+                    placeholder="Add member..." 
+                  />
+                  <button type="button" class="btn btn-secondary btn-lg" id="add-member-btn">Add</button>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <!-- Right Column: Data & Settlement -->
+          <div class="main-area">
+            <!-- Statistics -->
+            <div id="stats-container" class="stats-grid"></div>
+
+            <!-- Expenses List -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Expenses</h3>
+                <div class="search-box">
+                  <input 
+                    id="expense-search" 
+                    type="text" 
+                    class="input input-sm" 
+                    placeholder="Search expenses..." 
+                  />
+                </div>
+              </div>
+              <div class="card-body">
+                <div id="expenses-list" class="expenses-list"></div>
+              </div>
+            </div>
+
+            <!-- Settlement Plan -->
+            <div id="settlement-card" class="card settlement-card" hidden>
+              <div class="card-header">
+                <h3>Settlement Plan</h3>
+                <button class="btn btn-ghost" id="stats-detail-btn">📊 Details</button>
+              </div>
+              <div class="card-body">
+                <div id="settlement-content" class="settlement-content"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Modals -->
+    <dialog id="group-settings-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Group Settings</h2>
+          <button class="modal-close" id="close-group-settings" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="edit-group-name">Group Name</label>
+            <input id="edit-group-name" type="text" class="input" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-danger" id="delete-group-btn">Delete Group</button>
+          <button class="btn btn-secondary" id="cancel-settings-btn">Cancel</button>
+          <button class="btn btn-primary" id="save-settings-btn">Save</button>
+        </div>
+      </dialog>
+    </dialog>
+
+    <dialog id="export-modal" class="modal">
+      <div class="modal-content modal-sm">
+        <div class="modal-header">
+          <h2>Export Data</h2>
+          <button class="modal-close" id="close-export" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="text-secondary mb-4">Choose export format:</p>
+          <div class="button-group">
+            <button class="btn btn-secondary btn-block" id="export-json">Download as JSON</button>
+            <button class="btn btn-secondary btn-block" id="export-csv">Download as CSV</button>
+          </div>
+        </div>
+      </dialog>
+    </dialog>
+
+    <dialog id="edit-expense-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Edit Expense</h2>
+          <button class="modal-close" id="close-edit-expense" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <form id="edit-expense-form" class="form">
+            <div class="form-group">
+              <label for="edit-description">Description</label>
+              <input id="edit-description" type="text" class="input" required />
+            </div>
+            <div class="form-group">
+              <label for="edit-amount">Amount (₹)</label>
+              <input id="edit-amount" type="number" class="input" min="0" step="0.01" required />
+            </div>
+            <div class="form-group">
+              <label for="edit-category">Category</label>
+              <select id="edit-category" class="input"></select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-danger" id="delete-expense-btn">Delete</button>
+          <button class="btn btn-secondary" id="cancel-edit-btn">Cancel</button>
+          <button class="btn btn-primary" id="save-edit-btn">Save</button>
+        </div>
+      </dialog>
+    </dialog>
+
+    <!-- Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/utils.js"></script>
+  <script src="/components.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

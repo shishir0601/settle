@@ -1,0 +1,13 @@
+{
+  "name": "settle",
+  "version": "1.0.0",
+  "description": "Split group expenses and settle up in the fewest possible transfers. Zero dependencies.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/settle.test.js test/api.test.js"
+  },
+  "engines": { "node": ">=18" },
+  "keywords": ["expense-splitter", "settlement", "min-cash-flow", "zero-dependency"],
+  "license": "MIT"
+}
